@@ -1,0 +1,119 @@
+version: '3.5'
+
+services:
+    core: &core
+        build: .
+        image: core
+        restart: unless-stopped
+        environment:
+            - CORE_CONFIG=true
+            - APP_ENVIRONMENT=staging
+            - DEBUG=false
+            - SECRET_KEY=/run/secrets/secret_key
+            - ALLOWED_HOSTS=*
+            - MAX_LOGIN_ATTEMPTS=5
+            - DATABASE_NAME=core
+            - DATABASE_USER=/run/secrets/pdb_username
+            - DATABASE_PASSWORD=/run/secrets/pdb_password
+            - DATABASE_HOSTNAME=db
+            - DATABASE_PORT=5432
+            - EMAIL_BACKEND=console
+            - EMAIL_HOST=smtp.gmail.com
+            - EMAIL_PORT=587
+            - EMAIL_HOST_USER=/run/secrets/email_username
+            - CORS_CHECK=false
+            - CORS_ORIGIN_WHITELIST=https://localhost:3000;
+            - CELERY_BROKER_HOSTNAME=queue
+            - CELERY_BROKER_PORT=5672
+            - CELERY_BROKER_USERNAME=/run/secrets/celery_broker_username
+            - CELERY_BROKER_PASSWORD=/run/secrets/celery_broker_password
+        depends_on:
+            - db
+        volumes:
+            - core-media:/home/core/media
+            - core-django-logs:/home/core/log
+            - ./config/secrets/secret_key.txt:/run/secrets/secret_key
+            - ./config/secrets/pdb_username.txt:/run/secrets/pdb_username
+            - ./config/secrets/pdb_password.txt:/run/secrets/pdb_password
+            - ./config/secrets/celery_broker_username.txt:/run/secrets/celery_broker_username
+            - ./config/secrets/celery_broker_password.txt:/run/secrets/celery_broker_password
+        networks:
+            - internal_db
+            - internal_async
+            - reverse_proxy
+            - public
+        command: bash -c "
+            python manage.py makemigrations &&
+            gunicorn --workers=2 --thread=4 --timeout 300 --worker-tmp-dir /dev/shm --bind=0.0.0.0:8000 --log-level=info --access-logfile=- --error-logfile=- core.wsgi
+            "
+
+    celery_worker:
+        <<: *core
+        ports: []
+        depends_on:
+            - db
+            - queue
+        command: bash -c "celery -A core worker -l info"
+
+    db:
+        image: postgres:12.4-alpine
+        restart: unless-stopped
+        environment:
+            - POSTGRES_USER_FILE=/run/secrets/pdb_username
+            - POSTGRES_PASSWORD_FILE=/run/secrets/pdb_password
+            - POSTGRES_DB=core
+        volumes:
+            - db-data:/var/lib/postgresql/data
+            - ./config/secrets/pdb_username.txt:/run/secrets/pdb_username
+            - ./config/secrets/pdb_password.txt:/run/secrets/pdb_password
+            - ./config/postgres:/docker-entrypoint-initdb.d
+        networks:
+            - internal_db
+
+    reverseproxy:
+        image: nginx:1.19-alpine
+        restart: unless-stopped
+        ports:
+            - 443:443
+        volumes:
+            - core-media:/var/www/media
+            - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
+            - ./config/ssl/self.key:/etc/ssl/self.key
+            - ./config/ssl/self.crt:/etc/ssl/self.crt
+            - ./config/ssl/dhparam.pem:/etc/ssl/dhparam.pem
+        depends_on:
+            - core
+        networks:
+            - reverse_proxy
+            - public
+
+    queue:
+        image: rabbitmq:3.8-management
+        hostname: queue
+        ports:
+            - 15672:15672
+        environment:
+            - RABBITMQ_DEFAULT_USER_FILE=/run/secrets/celery_broker_username
+            - RABBITMQ_DEFAULT_PASS_FILE=/run/secrets/celery_broker_password
+        volumes:
+            - queue-data:/var/lib/rabbitmq/
+            - ./config/secrets/celery_broker_username.txt:/run/secrets/celery_broker_username
+            - ./config/secrets/celery_broker_password.txt:/run/secrets/celery_broker_password
+        restart: unless-stopped
+        networks:
+            - internal_async
+
+volumes:
+    db-data:
+    core-media:
+    core-django-logs:
+    queue-data:
+
+networks:
+    internal_db:
+        internal: true
+    internal_async:
+        internal: true
+    reverse_proxy:
+        internal: true
+    public:

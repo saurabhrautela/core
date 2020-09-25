@@ -1,0 +1,47 @@
+version: '3.5'
+
+services:
+    # PostgreSQL database
+    db-dev:
+        image: postgres:12.4-alpine
+        ports:
+            - 5432:5432
+        environment:
+            - POSTGRES_USER_FILE=/run/secrets/pdb_username
+            - POSTGRES_PASSWORD_FILE=/run/secrets/pdb_password
+            - POSTGRES_DB=core
+        volumes:
+            - pg-data-dev:/var/lib/postgresql/data
+            - ./config/postgres:/docker-entrypoint-initdb.d
+            - ./config/secrets/pdb_username.txt:/run/secrets/pdb_username
+            - ./config/secrets/pdb_password.txt:/run/secrets/pdb_password
+
+    # NGINX server to serve as reverse-proxy for localhost:8000
+#    nginx-dev:
+#        image: nginx:1.19-alpine
+#        ports:
+#            - 80:80
+#        volumes:
+#            - ./nginx_local.conf:/etc/nginx/nginx.conf
+#            - ../../config/ssl/self.key:/etc/ssl/self.key
+#            - ../../config/ssl/self.crt:/etc/ssl/self.crt
+#            - ../../config/ssl/dhparam.pem:/etc/ssl/dhparam.pem
+#            - ../../dev/media:/var/www/media
+#        network_mode: host
+
+    queue-dev:
+        image: rabbitmq:3.8-management
+        ports:
+            - 5672:5672
+            - 15672:15672
+        environment:
+            - RABBITMQ_DEFAULT_USER_FILE=/run/secrets/celery_broker_username
+            - RABBITMQ_DEFAULT_PASS_FILE=/run/secrets/celery_broker_password
+        volumes:
+            - queue-data-dev:/var/lib/rabbitmq
+            - ./config/secrets/celery_broker_username.txt:/run/secrets/celery_broker_username
+            - ./config/secrets/celery_broker_password.txt:/run/secrets/celery_broker_password
+
+volumes:
+    pg-data-dev:
+    queue-data-dev:

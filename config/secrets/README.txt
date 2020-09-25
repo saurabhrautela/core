@@ -1,0 +1,1 @@
+All the files containing secrets. Use `bootstrap.sh` to create secret files and add secret value to it.

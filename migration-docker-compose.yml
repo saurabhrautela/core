@@ -1,0 +1,60 @@
+version: '3.5'
+
+services:
+    core_migration:
+        image: core
+        environment:
+            - CORE_CONFIG=true
+            - APP_ENVIRONMENT=staging
+            - DEBUG=false
+            - SECRET_KEY=/run/secrets/secret_key
+            - ALLOWED_HOSTS=*
+            - MAX_LOGIN_ATTEMPTS=5
+            - DATABASE_NAME=core
+            - DATABASE_USER=/run/secrets/pdb_username
+            - DATABASE_PASSWORD=/run/secrets/pdb_password
+            - DATABASE_HOSTNAME=db
+            - DATABASE_PORT=5432
+            - EMAIL_BACKEND=console
+            - EMAIL_HOST=smtp.gmail.com
+            - EMAIL_PORT=587
+            - EMAIL_HOST_USER=/run/secrets/email_username
+            - EMAIL_HOST_USER_PASSWORD=/run/secrets/email_password
+            - CORS_CHECK=false
+            - CORS_ORIGIN_WHITELIST=https://localhost:3000;
+            - CELERY_BROKER_HOSTNAME=queue
+            - CELERY_BROKER_PORT=5672
+            - CELERY_BROKER_USERNAME=/run/secrets/celery_broker_username
+            - CELERY_BROKER_PASSWORD=/run/secrets/celery_broker_password
+        volumes:
+            - core-media:/home/core/media
+            - core-django-logs:/home/core/log
+            - ./config/fixtures/users.json:/run/fixtures/users.json
+            - ./config/secrets/secret_key.txt:/run/secrets/secret_key
+            - ./config/secrets/pdb_username.txt:/run/secrets/pdb_username
+            - ./config/secrets/pdb_password.txt:/run/secrets/pdb_password
+            - ./config/secrets/email_username.txt:/run/secrets/email_username
+            - ./config/secrets/email_password.txt:/run/secrets/email_password
+            - ./config/secrets/celery_broker_username.txt:/run/secrets/celery_broker_username
+            - ./config/secrets/celery_broker_password.txt:/run/secrets/celery_broker_password
+        networks:
+            - internal_db
+            - internal_async
+            - reverse_proxy
+        command: bash -c "
+            python manage.py makemigrations &&
+            python manage.py migrate
+#            && python manage.py loaddata /run/fixtures/users.json
+            "
+
+volumes:
+    core-media:
+    core-django-logs:
+
+networks:
+    internal_db:
+        internal: true
+    internal_async:
+        internal: true
+    reverse_proxy:
+        internal: true
