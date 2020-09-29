@@ -1,0 +1,16 @@
+APP_ENVIRONMENT: "development"
+DEBUG: "true"
+SECRET_KEY: z+4d!1k@ebw+a8hh-jc)ahaee5*grj2j$np34f_+6!v^n_rh=k
+ALLOWED_HOSTS: "*"
+MAX_LOGIN_ATTEMPTS: 5
+CORS_CHECK: "false"
+DATABASE_NAME: core
+DATABASE_USER: ../config/secrets/pdb_username.txt
+DATABASE_PASSWORD: ../config/secrets/pdb_password.txt
+DATABASE_HOSTNAME: localhost
+DATABASE_PORT: 5432
+CORS_ORIGIN_WHITELIST: ""
+CELERY_BROKER_HOSTNAME: localhost
+CELERY_BROKER_PORT: 5672
+CELERY_BROKER_USERNAME: guest
+CELERY_BROKER_PASSWORD: guest
