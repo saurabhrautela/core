@@ -223,4 +223,5 @@ fabric.properties
 /config/server_config.yml
 !/config/secrets/bootstrap.sh
 !/config/secrets/README.txt
-!/config/secrets/bootstrap.sh
+dev/*/migrations/*
+!dev/*/migrations/__init__.py
